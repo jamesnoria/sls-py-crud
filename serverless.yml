@@ -1,0 +1,62 @@
+service: aws-py-crud
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: python3.8
+  stage: dev
+  region: us-east-1
+  environment:
+    DYNAMODB_TABLE: ${self:service}-${opt:stage, self:provider.stage}
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+      Resource: "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE}"
+
+functions:
+  create-task:
+    handler: src/crud.create_task
+    events:
+      - httpApi:
+          path: /task
+          method: post
+  get-task:
+    handler: src/crud.get_task
+    events:
+      - httpApi:
+          path: /task/{id}
+          method: get
+  list-tasks:
+    handler: src/crud.list_tasks
+    events:
+      - httpApi:
+          path: /tasks
+          method: get
+  update-task:
+    handler: src/crud.update_task
+    events:
+      - httpApi:
+          path: /task/{id}
+          method: put
+
+resources:
+  Resources:
+    TodosDynamoDBTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.DYNAMODB_TABLE}
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
